@@ -1,5 +1,6 @@
 package com.ipa.sample.common;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -15,28 +16,19 @@ public class Weather {
 
         private String city;
 
+        @JsonProperty("cityid")
         private String cityId;
 
         private String temp;
 
-        private String wd;
+        private String SD;
 
-        private String ws;
+        private String AP;
 
-        private String sd;
-
-        private String ap;
-
-        private String njd;
-
-        private String wse;
+        private String WSE;
 
         private String time;
 
         private String sm;
-
-        private String isRadar;
-
-        private String radar;
     }
 }
