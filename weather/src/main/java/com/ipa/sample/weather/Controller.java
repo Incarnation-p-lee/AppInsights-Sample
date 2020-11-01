@@ -12,9 +12,13 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Date;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
 public class Controller {
+
+    private static final AtomicInteger count = new AtomicInteger(0);
 
     private static final RestTemplate restTemplate = new RestTemplate();
 
@@ -22,19 +26,35 @@ public class Controller {
 
     private static final String weatherUri = "http://www.weather.com.cn/data/sk/101021300.html";
 
+    private static final String fakeWeatherUri = "http://www.weather.com.cn/data/sk/101021300";
+
     private static final String accessStatUri = "http://access-stat/append";
 
     @GetMapping
-    public Weather get() throws JsonProcessingException {
+    public Weather get() throws JsonProcessingException, InterruptedException {
         Date now = new Date();
         StopWatch stopwatch = new StopWatch();
+        ResponseEntity<String> response;
+        Weather weather;
 
         stopwatch.start();
 
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-        ResponseEntity<String> response = restTemplate.getForEntity(weatherUri, String.class);
-        Weather weather = objectMapper.readValue(response.getBody(), Weather.class);
+        switch (count.incrementAndGet() % 3)
+        {
+            case 0:
+                response = restTemplate.getForEntity(fakeWeatherUri, String.class);
+                weather = objectMapper.readValue(response.getBody(), Weather.class);
+                break;
+            case 2:
+                Thread.sleep(1000 * 3);
+            case 1:
+            default:
+                response = restTemplate.getForEntity(weatherUri, String.class);
+                weather = objectMapper.readValue(response.getBody(), Weather.class);
+                break;
+        }
 
         stopwatch.stop();
 
