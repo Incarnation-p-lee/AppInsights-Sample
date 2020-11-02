@@ -13,7 +13,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
 public class Controller {
@@ -30,6 +29,8 @@ public class Controller {
 
     private static final String accessStatUri = "http://access-stat/append";
 
+    private static final String countUri = "http://count/";
+
     @GetMapping
     public Weather get() throws JsonProcessingException, InterruptedException {
         Date now = new Date();
@@ -41,8 +42,7 @@ public class Controller {
 
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-        switch (count.incrementAndGet() % 3)
-        {
+        switch (count.incrementAndGet() % 3) {
             case 0:
                 response = restTemplate.getForEntity(fakeWeatherUri, String.class);
                 weather = objectMapper.readValue(response.getBody(), Weather.class);
@@ -65,6 +65,8 @@ public class Controller {
         stat.setWeather(weather);
 
         restTemplate.postForEntity(accessStatUri, stat, AccessStat.class);
+
+        restTemplate.getForEntity(countUri, String.class);
 
         return weather;
     }

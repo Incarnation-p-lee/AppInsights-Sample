@@ -26,7 +26,6 @@ public class Controller {
     }
 
     @PostMapping("/append")
-//    @GetMapping("/")
     @ResponseStatus(HttpStatus.CREATED)
     @ResponseBody
     public AccessStat post(@RequestBody AccessStat stat) {
@@ -44,9 +43,16 @@ public class Controller {
     }
 
     @GetMapping("/list")
-    @ResponseStatus(HttpStatus.CREATED)
+    @ResponseStatus(HttpStatus.OK)
     @ResponseBody
     public List<AccessStatEntity> list() {
         return accessStatRepository.findAll();
+    }
+
+    @GetMapping("/count")
+    @ResponseStatus(HttpStatus.OK)
+    @ResponseBody
+    public String count() {
+        return String.valueOf(list().size());
     }
 }
