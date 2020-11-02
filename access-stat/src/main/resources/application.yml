@@ -1,4 +1,7 @@
 spring:
+  zipkin:
+    sender:
+      type: web
   datasource:
     url: "jdbc:mysql://app-insights-test.sqltest-eg1.mscds.com:3306/testdb?useSSL=true&requireSSL=false&useLegacyDatetimeCode=false&serverTimezone=UTC"
     username: ${MYSQL_USERNAME}
