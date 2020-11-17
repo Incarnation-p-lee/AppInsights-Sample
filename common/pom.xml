@@ -17,7 +17,6 @@
         <skip.boot.build>true</skip.boot.build>
     </properties>
 
-
     <dependencies>
         <dependency>
             <groupId>org.projectlombok</groupId>

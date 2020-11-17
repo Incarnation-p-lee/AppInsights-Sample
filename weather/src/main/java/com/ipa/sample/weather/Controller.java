@@ -48,7 +48,7 @@ public class Controller {
                 weather = objectMapper.readValue(response.getBody(), Weather.class);
                 break;
             case 2:
-                Thread.sleep(1000 * 3);
+                Thread.sleep(1000 * 10);
             case 1:
             default:
                 response = restTemplate.getForEntity(weatherUri, String.class);
