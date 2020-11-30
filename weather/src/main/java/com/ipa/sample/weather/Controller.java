@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipa.sample.common.AccessStat;
 import com.ipa.sample.common.Weather;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StopWatch;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +32,12 @@ public class Controller {
     private static final String accessStatUri = "http://access-stat/append";
 
     private static final String countUri = "http://count/";
+
+    private final Counter counter;
+
+    public Controller(MeterRegistry registry) {
+        counter = registry.counter("weather-application-get");
+    }
 
     @GetMapping
     public Weather get() throws JsonProcessingException, InterruptedException {
@@ -65,8 +73,9 @@ public class Controller {
         stat.setWeather(weather);
 
         restTemplate.postForEntity(accessStatUri, stat, AccessStat.class);
-
         restTemplate.getForEntity(countUri, String.class);
+
+        this.counter.increment();
 
         return weather;
     }
