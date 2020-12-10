@@ -1,13 +1,19 @@
 package com.ipa.sample.weather;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ipa.sample.common.AccessStat;
 import com.ipa.sample.common.Weather;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.micrometer.tagged.TaggedCircuitBreakerMetrics;
+import io.github.resilience4j.micrometer.tagged.TaggedRetryMetrics;
+import io.github.resilience4j.retry.RetryRegistry;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import lombok.SneakyThrows;
+import org.springframework.cloud.circuitbreaker.resilience4j.Resilience4JCircuitBreakerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.util.StopWatch;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,6 +22,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@EnableRetry
 @RestController
 public class Controller {
 
@@ -35,12 +42,41 @@ public class Controller {
 
     private final Counter counter;
 
-    public Controller(MeterRegistry registry) {
-        counter = registry.counter("weather-application-get");
+    private final Resilience4JCircuitBreakerFactory breakerFactory;
+
+    private Weather defaultWeather;
+
+    static {
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    }
+
+    public Controller(MeterRegistry registry, Resilience4JCircuitBreakerFactory breakerFactory) {
+        this.counter = registry.counter("weather-application-get");
+        this.breakerFactory = breakerFactory;
+
+        bindMetrics(registry);
+    }
+
+    private void bindMetrics(MeterRegistry registry) {
+        CircuitBreakerRegistry breakerRegistry = CircuitBreakerRegistry.ofDefaults();
+        RetryRegistry retryRegistry = RetryRegistry.ofDefaults();
+
+        breakerRegistry.circuitBreaker("weather-breaker");
+        retryRegistry.retry("weather-retry");
+
+        TaggedCircuitBreakerMetrics.ofCircuitBreakerRegistry(breakerRegistry).bindTo(registry);
+        TaggedRetryMetrics.ofRetryRegistry(retryRegistry).bindTo(registry);
     }
 
     @GetMapping
-    public Weather get() throws JsonProcessingException, InterruptedException {
+    public Weather get() {
+        return breakerFactory
+                .create("half-crash")
+                .run(this::getWeather, throwable -> getDefaultWeather());
+    }
+
+    @SneakyThrows
+    protected Weather getWeather() {
         Date now = new Date();
         StopWatch stopwatch = new StopWatch();
         ResponseEntity<String> response;
@@ -48,16 +84,11 @@ public class Controller {
 
         stopwatch.start();
 
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
         switch (count.incrementAndGet() % 3) {
             case 0:
                 response = restTemplate.getForEntity(fakeWeatherUri, String.class);
                 weather = objectMapper.readValue(response.getBody(), Weather.class);
                 break;
-            case 2:
-                Thread.sleep(1000 * 10);
-            case 1:
             default:
                 response = restTemplate.getForEntity(weatherUri, String.class);
                 weather = objectMapper.readValue(response.getBody(), Weather.class);
@@ -79,4 +110,23 @@ public class Controller {
 
         return weather;
     }
+
+    protected Weather getDefaultWeather() {
+        if (defaultWeather == null) {
+            defaultWeather = new Weather();
+
+            defaultWeather.setWeatherinfo(new Weather.WeatherInfo());
+            defaultWeather.getWeatherinfo().setAP("Unknown");
+            defaultWeather.getWeatherinfo().setCity("Unknown");
+            defaultWeather.getWeatherinfo().setCityId("Unknown");
+            defaultWeather.getWeatherinfo().setSD("Unknown");
+            defaultWeather.getWeatherinfo().setSm("Unknown");
+            defaultWeather.getWeatherinfo().setTemp("Unknown");
+            defaultWeather.getWeatherinfo().setTime("Unknown");
+            defaultWeather.getWeatherinfo().setWSE("Unknown");
+        }
+
+        return defaultWeather;
+    }
 }
+
