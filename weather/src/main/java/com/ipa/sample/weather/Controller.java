@@ -11,7 +11,11 @@ import io.github.resilience4j.retry.RetryRegistry;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.SneakyThrows;
+import org.apache.http.client.HttpClient;
 import org.springframework.cloud.circuitbreaker.resilience4j.Resilience4JCircuitBreakerFactory;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.util.StopWatch;
@@ -19,6 +23,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
 import java.util.Date;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -73,6 +80,19 @@ public class Controller {
         return breakerFactory
                 .create("half-crash")
                 .run(this::getWeather, throwable -> getDefaultWeather());
+    }
+
+    @GetMapping("/test")
+    public String getTest() throws MalformedURLException {
+        RestTemplate template = new RestTemplate();
+        HttpHeaders httpHeaders = new HttpHeaders();
+
+        httpHeaders.add("Host", "lifecycle.test.azureappplatform.io");
+
+        ResponseEntity<String> response = template.exchange("https://lifecycle/actuator/health", HttpMethod.GET,
+                new HttpEntity<String>(httpHeaders), String.class);
+
+        return response.getBody();
     }
 
     @SneakyThrows
